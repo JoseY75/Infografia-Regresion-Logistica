@@ -1,0 +1,118 @@
+# Instala OpenCV para el procesamiento de imágenes
+!pip install opencv-python
+
+# Importar librerías necesarias
+import numpy as np
+import os
+import cv2
+import random
+import matplotlib.pyplot as plt
+import pandas as pd
+
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+# --- PARAMETROS DE SIMULACION ---
+NUM_SAMPLES = 2000 # Número total de imágenes simuladas (1000 gatos, 1000 perros)
+IMAGE_SIZE = 64
+FLATTENED_SIZE = IMAGE_SIZE * IMAGE_SIZE # 4096 caracteristicas (simulando escala de grises)
+
+print(f"Creando dataset simulado con {NUM_SAMPLES} muestras de {FLATTENED_SIZE} características.")
+
+# Crear datos aleatorios que simulen píxeles normalizados [0, 1]
+# X_data: (2000, 4096)
+X_data = np.random.rand(NUM_SAMPLES, FLATTENED_SIZE).astype(np.float32)
+
+# Crear etiquetas (y_data): 0 = Gato, 1 = Perro
+y_data = np.array([0] * (NUM_SAMPLES // 2) + [1] * (NUM_SAMPLES // 2))
+
+# Mezclar los datos para que no estén ordenados por clase
+combined = list(zip(X_data, y_data))
+random.shuffle(combined)
+X, y = zip(*combined)
+
+X = np.array(X)
+y = np.array(y)
+
+print(f"Dataset simulado creado. Forma X: {X.shape}, Forma y: {y.shape}")
+
+# # --- OPCIÓN B: CÓDIGO PARA CARGAR DATOS REALES (Requiere subir las imágenes) ---
+# # Si subiste las carpetas 'cats' y 'dogs' a tu sesión de Colab, descomenta y usa este código.
+# # IMAGE_SIZE = 64
+# # data = []
+# # labels = []
+# # def process_images(dir_path, label):
+# #     # ... (La función de procesamiento real de imágenes de la respuesta anterior)
+# # process_images('./cats', 0)
+# # process_images('./dogs', 1)
+# # X = np.array(data)
+# # y = np.array(labels)
+# 1. División de Datos (80% entrenamiento, 20% prueba)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+print("-" * 30)
+print(f"Set de Entrenamiento: {X_train.shape[0]} muestras")
+print(f"Set de Prueba: {X_test.shape[0]} muestras")
+print("-" * 30)
+
+# 2. Instanciar y Entrenar el Modelo
+# max_iter=1000 es importante para que el optimizador converja con la alta dimensionalidad.
+model = LogisticRegression(solver='lbfgs', max_iter=1000, random_state=42)
+
+print("Iniciando entrenamiento...")
+model.fit(X_train, y_train)
+print("✅ Entrenamiento completado.")
+# 1. Hacer predicciones
+y_pred = model.predict(X_test)
+
+# 2. Cálculo y Reporte de Métricas
+
+print("\n\n=== RESULTADOS DEL MODELO DE REGRESIÓN LOGÍSTICA ===")
+print("-----------------------------------------------------")
+
+# A. Precisión (Accuracy)
+accuracy = accuracy_score(y_test, y_pred)
+print(f"Precisión (Accuracy) General: {accuracy:.4f} ({accuracy*100:.2f}%)")
+
+
+# B. Matriz de Confusión
+conf_matrix = confusion_matrix(y_test, y_pred)
+print("\nMatriz de Confusión:")
+# Se usa un DataFrame para una mejor visualización de la Matriz en Colab
+conf_df = pd.DataFrame(
+    conf_matrix,
+    index=['Real Gato (0)', 'Real Perro (1)'],
+    columns=['Pred. Gato (0)', 'Pred. Perro (1)']
+)
+print(conf_df)
+
+# C. Reporte de Clasificación (Precision, Recall, F1-Score)
+print("\nReporte de Clasificación Detallado:")
+# 0 = Gato (Clase Negativa), 1 = Perro (Clase Positiva)
+class_report = classification_report(y_test, y_pred, target_names=['Gato', 'Perro'])
+print(class_report)
+
+print("-----------------------------------------------------")
+
+
+# Visualización simple de la Matriz de Confusión (Opcional)
+plt.figure(figsize=(6, 5))
+plt.imshow(conf_matrix, interpolation='nearest', cmap=plt.cm.Blues)
+plt.title('Matriz de Confusión')
+plt.colorbar()
+tick_marks = np.arange(2)
+plt.xticks(tick_marks, ['Gato', 'Perro'])
+plt.yticks(tick_marks, ['Gato', 'Perro'])
+plt.ylabel('Etiqueta Real')
+plt.xlabel('Etiqueta Predicha')
+
+# Añadir los números dentro de la matriz
+thresh = conf_matrix.max() / 2.
+for i in range(conf_matrix.shape[0]):
+    for j in range(conf_matrix.shape[1]):
+        plt.text(j, i, format(conf_matrix[i, j], 'd'),
+                 ha="center", va="center",
+                 color="white" if conf_matrix[i, j] > thresh else "black")
+plt.show()
